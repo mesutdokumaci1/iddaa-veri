@@ -1,1 +1,54 @@
-iddaa-analiz/mirror/fetch.yml
+name: Veri Aynasi
+
+on:
+  schedule:
+    - cron: "0 6 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Veriyi indir
+        run: |
+          LEAGUES="T1 E0 SP1 D1 I1 F1"
+          SEASONS="2627 2526 2425 2324 2223"
+          BASE="https://www.football-data.co.uk/mmz4281"
+          UA="Mozilla/5.0 (compatible; IddaaAnalizMirror/1.0)"
+          ok=0
+          for S in $SEASONS; do
+            mkdir -p "data/$S"
+            for L in $LEAGUES; do
+              if [ -s "data/$S/$L.csv" ] && [ "$S" != "2627" ]; then
+                continue
+              fi
+              if curl -sfL --max-time 60 -A "$UA" -o tmp.csv "$BASE/$S/$L.csv"; then
+                if [ "$(wc -c < tmp.csv)" -gt 200 ]; then
+                  mv tmp.csv "data/$S/$L.csv"
+                  echo "OK $S/$L.csv"
+                  ok=$((ok+1))
+                fi
+              else
+                echo "-- $S/$L.csv yok"
+              fi
+              rm -f tmp.csv
+              sleep 1
+            done
+          done
+          curl -sfL --max-time 60 -A "$UA" -o data/fixtures.csv \
+               "https://www.football-data.co.uk/fixtures.csv" || true
+          date -u > data/SON_GUNCELLEME.txt
+          echo "Indirilen dosya sayisi: $ok"
+
+      - name: Depoya kaydet
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add data
+          git diff --staged --quiet || git commit -m "veri guncellendi"
+          git push
