@@ -16,14 +16,20 @@ jobs:
 
       - name: Veriyi indir
         run: |
-          LEAGUES="T1 E0 SP1 D1 I1 F1"
+          # Katalogdaki BUTUN ligler. Eskiden sadece 6 lig vardi; yeni bir
+          # ligi arayuzden isaretleyince gecmis verisi inmiyordu ve model
+          # "gecmis yok" diyordu. Artik hepsi iniyor -- bir ligi acmak icin
+          # bu dosyayi degistirmen gerekmiyor.
+          LEAGUES="T1 E0 E1 E2 E3 EC SP1 SP2 D1 D2 I1 I2 F1 F2 N1 B1 P1 G1 SC0 SC1"
           SEASONS="2627 2526 2425 2324 2223"
           BASE="https://www.football-data.co.uk/mmz4281"
           UA="Mozilla/5.0 (compatible; IddaaAnalizMirror/1.0)"
-          ok=0
+          ok=0; yok=0
           for S in $SEASONS; do
             mkdir -p "data/$S"
             for L in $LEAGUES; do
+              # Gecmis sezonlar bir kez inince degismez; sadece guncel
+              # sezonu (2627) her seferinde tazele.
               if [ -s "data/$S/$L.csv" ] && [ "$S" != "2627" ]; then
                 continue
               fi
@@ -32,9 +38,13 @@ jobs:
                   mv tmp.csv "data/$S/$L.csv"
                   echo "OK $S/$L.csv"
                   ok=$((ok+1))
+                else
+                  echo "-- $S/$L.csv bos"
+                  yok=$((yok+1))
                 fi
               else
                 echo "-- $S/$L.csv yok"
+                yok=$((yok+1))
               fi
               rm -f tmp.csv
               sleep 1
@@ -43,7 +53,7 @@ jobs:
           curl -sfL --max-time 60 -A "$UA" -o data/fixtures.csv \
                "https://www.football-data.co.uk/fixtures.csv" || true
           date -u > data/SON_GUNCELLEME.txt
-          echo "Indirilen dosya sayisi: $ok"
+          echo "Indirilen: $ok   Bulunamayan: $yok"
 
       - name: Depoya kaydet
         run: |
