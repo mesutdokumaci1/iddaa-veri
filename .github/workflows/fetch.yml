@@ -50,6 +50,28 @@ jobs:
               sleep 1
             done
           done
+          # --- EK LIGLER ---
+          # Bunlar ulke basina TEK dosyadir ve icinde butun sezonlar vardir.
+          # Sezon dongusu yok; her calismada tazelenir.
+          # Not: bu dosyalarda korner/kart/hakem sutunu YOKTUR.
+          EXTRA="DNK SWE NOR FIN POL AUT SWZ IRL ROU RUS BRA ARG USA MEX JPN CHN"
+          mkdir -p data/new
+          for X in $EXTRA; do
+            if curl -sfL --max-time 60 -A "$UA" -o tmp.csv \
+                 "https://www.football-data.co.uk/new/$X.csv"; then
+              if [ "$(wc -c < tmp.csv)" -gt 200 ]; then
+                mv tmp.csv "data/new/$X.csv"
+                echo "OK new/$X.csv"
+                ok=$((ok+1))
+              fi
+            else
+              echo "-- new/$X.csv yok"
+              yok=$((yok+1))
+            fi
+            rm -f tmp.csv
+            sleep 1
+          done
+
           curl -sfL --max-time 60 -A "$UA" -o data/fixtures.csv \
                "https://www.football-data.co.uk/fixtures.csv" || true
           date -u > data/SON_GUNCELLEME.txt
